@@ -1,6 +1,9 @@
 name: Deploy Dashboard
 on: [push]
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
