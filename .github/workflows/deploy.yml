@@ -1,4 +1,4 @@
-name: Deploy Bokeh to GitHub Pages
+name: Deploy Bokeh Dashboard
 
 on:
   push:
@@ -10,31 +10,22 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Checkout el código
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      # 2. Configura Python
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
           python-version: '3.11'
 
-      # 3. Instala dependencias
       - name: Install dependencies
         run: |
           pip install bokeh pandas
-          
-      # 4. Configura Git
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
 
-      # 5. Prepara la rama gh-pages
-      - name: Prepare gh-pages branch
+      - name: Prepare gh-pages
         run: |
           git fetch origin gh-pages
           git checkout gh-pages
@@ -42,38 +33,23 @@ jobs:
           git commit -m "Clean gh-pages" --allow-empty
           git push origin gh-pages
 
-      # 6. Ejecuta Bokeh y captura el HTML
-      - name: Run Bokeh and capture output
+      - name: Generate static content
         run: |
-          # Instala xvfb para simular pantalla
-          sudo apt-get install xvfb
-          
-          # Ejecuta Bokeh en segundo plano y captura el HTML
-          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-          export DISPLAY=:99
-          
-          bokeh serve --show app.py > bokeh_output.html 2>&1 &
-          sleep 15
-          
-          # Extrae la URL del HTML generado
-          HTML_URL=$(grep -oP 'Bokeh app running at: \K.*' bokeh_output.html | head -1)
-          
-          # Si no funciona el método automático, generamos uno manual
-          if [ -z "$HTML_URL" ]; then
-            echo "<html><body>" > index.html
-            echo "<h1>Superstore Dashboard</h1>" >> index.html
-            echo "<p>Para ver el dashboard interactivo, ejecuta localmente:</p>" >> index.html
-            echo "<code>bokeh serve app.py --show</code>" >> index.html
-            echo "</body></html>" >> index.html
-          else
-            curl -s "$HTML_URL" > index.html
-          fi
+          # Crear un index.html básico con instrucciones
+          echo "<html><body>" > index.html
+          echo "<h1>Superstore Dashboard</h1>" >> index.html
+          echo "<p>Esta aplicación requiere un servidor Bokeh para funcionar.</p>" >> index.html
+          echo "<p>Para ver el dashboard interactivo, ejecuta localmente:</p>" >> index.html
+          echo "<code>bokeh serve app.py --show</code>" >> index.html
+          echo "</body></html>" >> index.html
 
-      # 7. Sube el archivo index.html a gh-pages
       - name: Deploy to gh-pages
         run: |
           git checkout gh-pages
-          mv index.html .
-          git add index.html
-          git commit -m "Deploy Bokeh dashboard $(date +'%Y-%m-%d %H:%M:%S')"
+          # Forzar la eliminación de todo el contenido existente
+          rm -rf *
+          # Mover el nuevo index.html
+          mv ../index.html .
+          git add .
+          git commit -m "Deploy static info page $(date +'%Y-%m-%d %H:%M:%S')"
           git push origin gh-pages
