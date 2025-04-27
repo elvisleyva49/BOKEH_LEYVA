@@ -1,5 +1,8 @@
-name: Deploy Dashboard
-on: [push]
+name: Deploy Redirect Page
+
+on:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
@@ -8,44 +11,46 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
-          
-      - name: Install dependencies
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
         run: |
-          sudo apt-get install -y chromium-browser
-          pip install bokeh pandas selenium
-          
-      - name: Take screenshot
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Prepare gh-pages
         run: |
-          python -m bokeh serve app.py --port 5006 --allow-websocket-origin=* &
-          sleep 20
-          python -c "
-          from selenium import webdriver
-          options = webdriver.ChromeOptions()
-          options.add_argument('--headless')
-          driver = webdriver.Chrome(options=options)
-          driver.get('http://localhost:5006/app')
-          driver.save_screenshot('dashboard.png')
-          driver.quit()
-          "
-          
-      - name: Create page
+          git fetch origin gh-pages
+          git checkout gh-pages
+          find . -not -path '*/\.git*' -delete
+          git add .
+          git commit -m "Clean gh-pages" --allow-empty
+          git push origin gh-pages
+
+      - name: Create redirect page
         run: |
           echo '<!DOCTYPE html>
           <html>
-          <head><title>Dashboard</title></head>
+          <head>
+            <title>Superstore Dashboard</title>
+            <meta http-equiv="refresh" content="0; url=https://bokeh-leyva.onrender.com/app" />
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .spinner { margin: 40px auto; width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+              @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            </style>
+          </head>
           <body>
-            <img src="dashboard.png" style="width:100%">
+            <h1>Redirigiendo al Dashboard...</h1>
+            <div class="spinner"></div>
+            <p>Si no eres redirigido automáticamente, <a href="https://bokeh-leyva.onrender.com/app">haz clic aquí</a>.</p>
           </body>
           </html>' > index.html
-          
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+
+      - name: Deploy to gh-pages
+        run: |
+          git checkout gh-pages
+          git add index.html
+          git commit -m "Deploy redirect to Render $(date +'%Y-%m-%d %H:%M:%S')"
+          git push origin gh-pages
