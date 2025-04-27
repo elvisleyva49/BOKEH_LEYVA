@@ -11,8 +11,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Needed for the gh-pages branch history
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -24,39 +22,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install bokeh pandas
 
-      - name: Generate static HTML
+      - name: Run Bokeh server and export to HTML
         run: |
-          # Convertir la app Bokeh a HTML estático
-          python -m bokeh html app.py --name index
-          mv index.html ./  # Mover el archivo a la raíz
+          python -m bokeh serve --show app.py --port 5000 &
+          sleep 10
+          curl -o index.html http://localhost:5000/app
 
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-
-      - name: Deploy to gh-pages branch
-        run: |
-          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
-          git fetch origin gh-pages || true
-          
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
-            git checkout gh-pages
-            git pull origin gh-pages
-          else
-            git checkout --orphan gh-pages
-            git rm -rf .
-          fi
-          
-          # Copiar el archivo generado
-          cp index.html ./
-          
-          # Commit y push
-          git add index.html
-          git commit -m "Deploy Bokeh app (GitHub Actions)"
-          git push origin gh-pages
-
-      - name: Verify deployment
-        run: |
-          echo "La aplicación ha sido desplegada en:"
-          echo "https://${{ github.repository_owner }}.github.io/${{ github.repository_name }}"
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          publish_dir: ./
+          keep_files: true
