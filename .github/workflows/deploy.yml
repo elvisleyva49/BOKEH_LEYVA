@@ -1,43 +1,44 @@
-name: Deploy Bokeh App to GitHub Pages
+name: Deploy Static Version to GitHub Pages
 
 on:
   push:
-    branches:
-      - main  # Cambia esto si tu rama principal tiene un nombre diferente
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Check out repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'  # O la versión que necesites
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install bokeh pandas  # Instala las dependencias necesarias para ejecutar el app
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bokeh pandas
 
-    - name: Create the Bokeh app
-      run: |
-        mkdir -p build
-        cp app.py build/  # Copia tu archivo app.py a un directorio build
+      - name: Download live version
+        run: |
+          # Descargar la versión en vivo desde Render
+          curl -o index.html "https://bokeh-leyva.onrender.com/app"
+          # Añadir meta tag para responsividad
+          sed -i 's/<head>/<head>\n<meta name="viewport" content="width=device-width, initial-scale=1">/' index.html
 
-    - name: Deploy to GitHub Pages
-      env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Token para autenticarte en GitHub
-      run: |
-        # Instala la herramienta de GitHub Pages
-        pip install ghp-import
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
+          keep_files: true
+          force_orphan: true
 
-        # Crea el directorio de salida y compila la aplicación
-        mkdir -p docs
-        cp -r build/* docs/
-
-        # Usa ghp-import para desplegar en gh-pages
-        ghp-import -n -p -f docs/
+      - name: Verify deployment
+        run: |
+          echo "La versión estática ha sido desplegada en:"
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.repository_name }}"
