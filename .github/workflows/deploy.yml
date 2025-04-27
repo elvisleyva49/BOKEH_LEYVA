@@ -1,11 +1,9 @@
-name: Deploy Bokeh Dashboard
+name: Deploy Bokeh App to GitHub Pages
 
 on:
   push:
     branches: [ main ]
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -14,42 +12,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Needed for the gh-pages branch history
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install bokeh pandas
 
-      - name: Prepare gh-pages
+      - name: Generate static HTML
         run: |
-          git fetch origin gh-pages
-          git checkout gh-pages
-          git rm -rf . || echo "Nothing to delete"
-          git commit -m "Clean gh-pages" --allow-empty
+          # Convertir la app Bokeh a HTML estático
+          python -m bokeh html app.py --name index
+          mv index.html ./  # Mover el archivo a la raíz
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Deploy to gh-pages branch
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+          git fetch origin gh-pages || true
+          
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout gh-pages
+            git pull origin gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf .
+          fi
+          
+          # Copiar el archivo generado
+          cp index.html ./
+          
+          # Commit y push
+          git add index.html
+          git commit -m "Deploy Bokeh app (GitHub Actions)"
           git push origin gh-pages
 
-      - name: Generate static content
+      - name: Verify deployment
         run: |
-          # Crear un index.html básico con instrucciones
-          echo "<html><body>" > index.html
-          echo "<h1>Superstore Dashboard</h1>" >> index.html
-          echo "<p>Esta aplicación requiere un servidor Bokeh para funcionar.</p>" >> index.html
-          echo "<p>Para ver el dashboard interactivo, ejecuta localmente:</p>" >> index.html
-          echo "<code>bokeh serve app.py --show</code>" >> index.html
-          echo "</body></html>" >> index.html
-
-      - name: Deploy to gh-pages
-        run: |
-          git checkout gh-pages
-          # Forzar la eliminación de todo el contenido existente
-          rm -rf *
-          # Mover el nuevo index.html
-          mv ../index.html .
-          git add .
-          git commit -m "Deploy static info page $(date +'%Y-%m-%d %H:%M:%S')"
-          git push origin gh-pages
+          echo "La aplicación ha sido desplegada en:"
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.repository_name }}"
