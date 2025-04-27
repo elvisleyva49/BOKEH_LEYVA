@@ -5,6 +5,9 @@ on:
     branches:
       - main  # Ejecutar el flujo de trabajo cuando haya un push en la rama principal
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest  # Usar el sistema operativo más reciente
@@ -61,4 +64,4 @@ jobs:
         git commit -m "Generar nueva página Bokeh"
         git push https://github-actions:${{ secrets.GH_TOKEN }}@github.com/elvisleyva49/BOKEH_LEYVA.git gh-pages
 
-        
+
