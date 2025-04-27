@@ -27,7 +27,13 @@ jobs:
         source venv/bin/activate
         pip install -r requirements.txt
 
-    # 4. Eliminar el contenido actual de la rama gh-pages
+    # 4. Configura el usuario de Git para el bot de GitHub
+    - name: Set up Git user for GitHub Actions bot
+      run: |
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+
+    # 5. Eliminar el contenido actual de la rama gh-pages
     - name: Clean gh-pages branch
       run: |
         git fetch --all
@@ -36,17 +42,17 @@ jobs:
         git commit -m "Limpiar contenido de gh-pages"
         git push origin gh-pages
 
-    # 5. Generar la página con Bokeh
+    # 6. Generar la página con Bokeh
     - name: Generate the Bokeh app
       run: |
         source venv/bin/activate
         bokeh serve app.py --prefix '/bokeh' --static-prefix 'static' --log-level=debug --show --port 5006 &
 
-    # 6. Esperar que Bokeh termine de generar los archivos
+    # 7. Esperar que Bokeh termine de generar los archivos
     - name: Wait for Bokeh to finish
       run: sleep 10
 
-    # 7. Crear una nueva rama gh-pages y añadir el archivo generado
+    # 8. Crear una nueva rama gh-pages y añadir el archivo generado
     - name: Push new content to gh-pages
       run: |
         git checkout -b gh-pages
